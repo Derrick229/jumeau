@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jumeau numérique — LED</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --txt:#e2e8f0; --mute:#94a3b8; --on:#facc15; --ok:#22c55e; --ko:#ef4444; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--bg); color:var(--txt); font-family:system-ui,-apple-system,Segoe UI,sans-serif; }
+  .card { background:var(--card); border-radius:20px; padding:32px 40px; text-align:center; width:min(92vw,460px); }
+  h1 { font-size:1.15rem; margin:0 0 6px; }
+  .sub { color:var(--mute); font-size:.85rem; margin-bottom:26px; }
+  .row { display:flex; align-items:center; justify-content:center; gap:44px; }
+
+  /* LED */
+  .led svg { width:110px; height:150px; }
+  .led .glass { fill:#475569; transition:fill .2s, filter .2s; }
+  .led.on .glass { fill:var(--on); filter:drop-shadow(0 0 22px var(--on)); }
+
+  /* Interrupteur */
+  .switch { position:relative; width:84px; height:44px; background:#475569; border-radius:44px;
+            cursor:pointer; transition:background .2s; border:0; padding:0; }
+  .switch::after { content:""; position:absolute; top:4px; left:4px; width:36px; height:36px;
+                   background:#fff; border-radius:50%; transition:transform .2s; }
+  .switch.on { background:var(--ok); }
+  .switch.on::after { transform:translateX(40px); }
+  .switch:disabled { opacity:.4; cursor:not-allowed; }
+
+  #etat { margin-top:26px; font-size:1.05rem; font-weight:600; }
+  .badges { margin-top:14px; display:flex; justify-content:center; gap:16px; font-size:.78rem; color:var(--mute); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ko); margin-right:6px; }
+  .dot.ok { background:var(--ok); }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Jumeau numérique</h1>
+  <div class="sub">La LED affichée reflète l’état réel de la LED physique</div>
+
+  <div class="row">
+    <div class="led" id="led">
+      <svg viewBox="0 0 100 140">
+        <path class="glass" d="M50 8 C28 8 16 26 16 44 C16 62 30 72 30 84 L70 84 C70 72 84 62 84 44 C84 26 72 8 50 8 Z" stroke="#94a3b8" stroke-width="2"/>
+        <rect x="30" y="84" width="40" height="10" fill="#64748b"/>
+        <rect x="34" y="94" width="32" height="10" fill="#64748b"/>
+        <line x1="42" y1="104" x2="42" y2="134" stroke="#94a3b8" stroke-width="3"/>
+        <line x1="58" y1="104" x2="58" y2="134" stroke="#94a3b8" stroke-width="3"/>
+      </svg>
+    </div>
+    <button class="switch" id="sw" aria-label="Interrupteur" disabled></button>
+  </div>
+
+  <div id="etat">LED éteinte</div>
+  <div class="badges">
+    <span><span class="dot" id="dotBroker"></span>Serveur</span>
+    <span><span class="dot" id="dotDevice"></span>Appareil</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+  // ⚠️ Doit être IDENTIQUE à BASE dans le code de l’ESP32. Choisis une valeur unique et difficile à deviner.
+  const BASE = "derrick-led-7f3a9";
+  const BROKER = "wss://broker.hivemq.com:8884/mqtt";
+
+  const T_CMD    = BASE + "/commande";
+  const T_ETAT   = BASE + "/etat";
+  const T_ONLINE = BASE + "/en_ligne";
+
+  const led = document.getElementById("led");
+  const sw = document.getElementById("sw");
+  const etat = document.getElementById("etat");
+  const dotBroker = document.getElementById("dotBroker");
+  const dotDevice = document.getElementById("dotDevice");
+
+  let isOn = false, deviceOnline = false;
+
+  function render() {
+    led.classList.toggle("on", isOn);
+    sw.classList.toggle("on", isOn);
+    sw.disabled = !deviceOnline;
+    etat.textContent = deviceOnline ? (isOn ? "LED allumée" : "LED éteinte") : "Appareil hors ligne";
+  }
+
+  const client = mqtt.connect(BROKER, { reconnectPeriod: 2000 });
+
+  client.on("connect", () => {
+    dotBroker.classList.add("ok");
+    client.subscribe([T_ETAT, T_ONLINE]);
+  });
+  client.on("close", () => { dotBroker.classList.remove("ok"); });
+
+  client.on("message", (topic, msg) => {
+    const v = msg.toString() === "1";
+    if (topic === T_ETAT) isOn = v;
+    if (topic === T_ONLINE) { deviceOnline = v; dotDevice.classList.toggle("ok", v); }
+    render();
+  });
+
+  // Le clic envoie une commande ; l’affichage ne change qu’une fois l’état réel confirmé par l’appareil.
+  sw.addEventListener("click", () => {
+    client.publish(T_CMD, isOn ? "0" : "1");
+  });
+
+  render();
+</script>
+</body>
+</html>
