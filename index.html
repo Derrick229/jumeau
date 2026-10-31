@@ -5,106 +5,164 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jumeau numérique — LED</title>
 <style>
-  :root { --bg:#0f172a; --card:#1e293b; --txt:#e2e8f0; --mute:#94a3b8; --on:#facc15; --ok:#22c55e; --ko:#ef4444; }
-  * { box-sizing:border-box; }
-  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background:var(--bg); color:var(--txt); font-family:system-ui,-apple-system,Segoe UI,sans-serif; }
-  .card { background:var(--card); border-radius:20px; padding:32px 40px; text-align:center; width:min(92vw,460px); }
-  h1 { font-size:1.15rem; margin:0 0 6px; }
-  .sub { color:var(--mute); font-size:.85rem; margin-bottom:26px; }
-  .row { display:flex; align-items:center; justify-content:center; gap:44px; }
-
-  /* LED */
-  .led svg { width:110px; height:150px; }
-  .led .glass { fill:#475569; transition:fill .2s, filter .2s; }
-  .led.on .glass { fill:var(--on); filter:drop-shadow(0 0 22px var(--on)); }
-
-  /* Interrupteur */
-  .switch { position:relative; width:84px; height:44px; background:#475569; border-radius:44px;
-            cursor:pointer; transition:background .2s; border:0; padding:0; }
-  .switch::after { content:""; position:absolute; top:4px; left:4px; width:36px; height:36px;
-                   background:#fff; border-radius:50%; transition:transform .2s; }
-  .switch.on { background:var(--ok); }
-  .switch.on::after { transform:translateX(40px); }
-  .switch:disabled { opacity:.4; cursor:not-allowed; }
-
-  #etat { margin-top:26px; font-size:1.05rem; font-weight:600; }
-  .badges { margin-top:14px; display:flex; justify-content:center; gap:16px; font-size:.78rem; color:var(--mute); }
-  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ko); margin-right:6px; }
-  .dot.ok { background:var(--ok); }
+:root{--bg:#0f172a;--card:#1e293b;--txt:#e2e8f0;--mute:#94a3b8;--on:#facc15;--ok:#22c55e;--ko:#ef4444}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,sans-serif;padding:18px}
+.wrap{max-width:1000px;margin:auto;display:grid;gap:16px;grid-template-columns:310px 1fr}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:16px;padding:18px}
+h1{font-size:1.1rem;margin:0 0 4px}h2{font-size:.85rem;margin:14px 0 6px;color:var(--mute);font-weight:600}
+.sub{color:var(--mute);font-size:.8rem;margin-bottom:14px}
+.row{display:flex;align-items:center;justify-content:center;gap:34px;margin:10px 0}
+.led svg{width:90px;height:125px;overflow:visible}
+.glass{fill:#475569}.glow{fill:var(--on);opacity:var(--g,0);filter:drop-shadow(0 0 calc(var(--g,0)*22px) var(--on))}
+.switch{position:relative;width:74px;height:40px;background:#475569;border-radius:40px;border:0;cursor:pointer;transition:.2s}
+.switch::after{content:"";position:absolute;top:4px;left:4px;width:32px;height:32px;background:#fff;border-radius:50%;transition:.2s}
+.switch.on{background:var(--ok)}.switch.on::after{transform:translateX(34px)}
+.switch:disabled{opacity:.4;cursor:not-allowed}
+#etat{text-align:center;font-weight:600;margin-bottom:10px}
+label{display:flex;justify-content:space-between;font-size:.8rem;color:var(--mute);margin-top:10px}
+input[type=range]{width:100%}
+input[type=number]{width:80px;background:#0f172a;color:var(--txt);border:1px solid #334155;border-radius:6px;padding:4px}
+button.b{width:100%;margin-top:12px;padding:10px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-size:.9rem;cursor:pointer}
+button.b.alt{background:#475569}button.b:disabled{opacity:.4;cursor:not-allowed}
+.badges{display:flex;gap:14px;margin-top:12px;font-size:.75rem;color:var(--mute)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ko);margin-right:5px}.dot.ok{background:var(--ok)}
+canvas{width:100%;height:auto;background:#0f172a;border-radius:8px}
+.params{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--mute);align-items:center}
+#out,#res{font-size:.82rem;line-height:1.5;margin-top:8px}
+.leg{font-size:.75rem;color:var(--mute)}
+.btns{display:flex;gap:10px}
 </style>
 </head>
 <body>
-<div class="card">
-  <h1>Jumeau numérique</h1>
-  <div class="sub">La LED affichée reflète l’état réel de la LED physique</div>
-
+<div class="wrap">
+ <div class="card">
+  <h1>Jumeau numérique — LED</h1>
+  <div class="sub" id="modeLbl"></div>
   <div class="row">
     <div class="led" id="led">
       <svg viewBox="0 0 100 140">
-        <path class="glass" d="M50 8 C28 8 16 26 16 44 C16 62 30 72 30 84 L70 84 C70 72 84 62 84 44 C84 26 72 8 50 8 Z" stroke="#94a3b8" stroke-width="2"/>
-        <rect x="30" y="84" width="40" height="10" fill="#64748b"/>
-        <rect x="34" y="94" width="32" height="10" fill="#64748b"/>
-        <line x1="42" y1="104" x2="42" y2="134" stroke="#94a3b8" stroke-width="3"/>
-        <line x1="58" y1="104" x2="58" y2="134" stroke="#94a3b8" stroke-width="3"/>
+        <path class="glass" d="M50 8C28 8 16 26 16 44C16 62 30 72 30 84L70 84C70 72 84 62 84 44C84 26 72 8 50 8Z" stroke="#94a3b8" stroke-width="2"/>
+        <path class="glow" d="M50 8C28 8 16 26 16 44C16 62 30 72 30 84L70 84C70 72 84 62 84 44C84 26 72 8 50 8Z"/>
+        <rect x="30" y="84" width="40" height="10" fill="#64748b"/><rect x="34" y="94" width="32" height="10" fill="#64748b"/>
+        <line x1="42" y1="104" x2="42" y2="134" stroke="#94a3b8" stroke-width="3"/><line x1="58" y1="104" x2="58" y2="134" stroke="#94a3b8" stroke-width="3"/>
       </svg>
     </div>
-    <button class="switch" id="sw" aria-label="Interrupteur" disabled></button>
+    <button class="switch" id="sw" aria-label="Interrupteur"></button>
   </div>
+  <div id="etat"></div>
+  <label>Rapport cyclique <span id="dv"></span></label><input type="range" id="duty" min="0" max="100" step="5">
+  <label>Fréquence PWM <span id="fv"></span></label><input type="range" id="freq" min="10" max="1000" step="10">
+  <button class="b alt" id="modeBtn"></button>
+  <div class="badges"><span><span class="dot" id="dB"></span>Serveur</span><span><span class="dot" id="dD"></span>Appareil</span></div>
+  <div class="leg" id="phys" style="margin-top:10px"></div>
+ </div>
 
-  <div id="etat">LED éteinte</div>
-  <div class="badges">
-    <span><span class="dot" id="dotBroker"></span>Serveur</span>
-    <span><span class="dot" id="dotDevice"></span>Appareil</span>
+ <div class="card">
+  <h2 style="margin-top:0">Modèle : alimentation → résistance → LED (Shockley)</h2>
+  <div class="params">
+    <span>Vcc (V) <input type="number" id="vcc" value="3.3" step="0.1"></span>
+    <span>R (Ω) <input type="number" id="R" value="220" step="10"></span>
   </div>
+  <div id="out"></div>
+  <h2>Forme d’onde (bleu : jumeau · orange : mesure) — phase non alignée</h2>
+  <canvas id="cw" width="620" height="190"></canvas>
+  <h2>Spectre FFT (amplitude en V, 0 → 2000 Hz)</h2>
+  <canvas id="cs" width="620" height="190"></canvas>
+  <div class="btns">
+    <button class="b" id="mes">Mesurer le physique</button>
+    <button class="b alt" id="cal">Calibrer le modèle</button>
+  </div>
+  <div id="res">Clique sur « Mesurer le physique » pour comparer le jumeau à la réalité.</div>
+ </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
-  // ⚠️ Doit être IDENTIQUE à BASE dans le code de l’ESP32. Choisis une valeur unique et difficile à deviner.
-  const BASE = "derrick-led9";
-  const BROKER = "wss://broker.hivemq.com:8884/mqtt";
+// ⚠️ Identique à BASE dans le code ESP32
+const BASE="derrick-led9",BROKER="wss://broker.hivemq.com:8884/mqtt";
+const T={cmd:BASE+"/commande",etat:BASE+"/etat",on:BASE+"/en_ligne",req:BASE+"/capture_demande",cap:BASE+"/capture"};
+const $=id=>document.getElementById(id);
+const N=512,FS=4000;
+const P={vcc:3.3,R:220,n:2,Is:1e-18,Vt:0.02585};
+let mode="sync",online=false,dev={duty:0,freq:100},twin={duty:0,freq:100},last=100,meas=null;
 
-  const T_CMD    = BASE + "/commande";
-  const T_ETAT   = BASE + "/etat";
-  const T_ONLINE = BASE + "/en_ligne";
+/* ---------- Modèle ---------- */
+function solveVf(){let lo=0,hi=P.vcc;for(let i=0;i<60;i++){const m=(lo+hi)/2;
+  const f=P.Is*(Math.exp(m/(P.n*P.Vt))-1)-(P.vcc-m)/P.R;f>0?hi=m:lo=m;}return(lo+hi)/2;}
+function simulate(duty,freq){const Vf=solveVf(),v=new Float64Array(N);
+  for(let k=0;k<N;k++){const ph=(k/FS*freq)%1;v[k]=ph<duty/100?Vf:0;}return v;}
+const avg=a=>a.reduce((s,x)=>s+x,0)/a.length;
+function fft(re){const n=re.length,im=new Float64Array(n);
+  for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){const t=re[i];re[i]=re[j];re[j]=t;}}
+  for(let len=2;len<=n;len<<=1){const a=-2*Math.PI/len;
+    for(let i=0;i<n;i+=len)for(let k=0;k<len/2;k++){const wr=Math.cos(a*k),wi=Math.sin(a*k),u=i+k,v=u+len/2;
+      const xr=re[v]*wr-im[v]*wi,xi=re[v]*wi+im[v]*wr;re[v]=re[u]-xr;im[v]=im[u]-xi;re[u]+=xr;im[u]+=xi;}}
+  return im;}
+function spectrum(x){const n=x.length,w=new Float64Array(n);
+  for(let i=0;i<n;i++)w[i]=x[i]*(0.5-0.5*Math.cos(2*Math.PI*i/n));
+  const im=fft(w),m=new Float64Array(n/2);
+  for(let k=0;k<n/2;k++)m[k]=2*Math.hypot(w[k],im[k])/(n*0.5);return m;}
 
-  const led = document.getElementById("led");
-  const sw = document.getElementById("sw");
-  const etat = document.getElementById("etat");
-  const dotBroker = document.getElementById("dotBroker");
-  const dotDevice = document.getElementById("dotDevice");
+/* ---------- Tracés ---------- */
+function plot(cv,series,ymax,xl){const c=cv.getContext("2d"),W=cv.width,H=cv.height;c.clearRect(0,0,W,H);
+  c.font="11px sans-serif";c.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=10+(H-30)*i/4;c.strokeStyle="#334155";c.beginPath();c.moveTo(40,y);c.lineTo(W-8,y);c.stroke();
+    c.fillStyle="#94a3b8";c.fillText((ymax*(1-i/4)).toFixed(2),4,y+4);}
+  series.forEach(s=>{if(!s.d)return;c.strokeStyle=s.col;c.lineWidth=1.6;c.beginPath();
+    for(let i=0;i<s.d.length;i++){const x=40+(W-48)*i/(s.d.length-1),y=10+(H-30)*(1-Math.min(s.d[i]/ymax,1));i?c.lineTo(x,y):c.moveTo(x,y);}c.stroke();});
+  c.fillStyle="#94a3b8";c.fillText(xl,W/2-30,H-4);}
 
-  let isOn = false, deviceOnline = false;
+function analyse(){const mod=simulate(twin.duty,twin.freq),sm=spectrum(meas),sd=spectrum(mod);
+  let e=0;for(let k=1;k<256;k++)e+=(sm[k]-sd[k])**2;
+  const rm=Math.sqrt(e/255),dm=avg(meas)-avg(mod),Vf=solveVf(),ok=Math.abs(dm)<0.08*Vf&&rm<0.05*Vf;
+  return `Moyenne mesurée ${avg(meas).toFixed(2)} V · jumeau ${avg(mod).toFixed(2)} V (écart ${(dm*1000).toFixed(0)} mV)<br>`+
+    `Écart spectral RMS : ${(rm*1000).toFixed(0)} mV<br><b style="color:${ok?"#22c55e":"#fb923c"}">${ok?"Le jumeau reproduit le physique":"Écart notable : calibre le modèle ou vérifie le câblage"}</b>`;}
 
-  function render() {
-    led.classList.toggle("on", isOn);
-    sw.classList.toggle("on", isOn);
-    sw.disabled = !deviceOnline;
-    etat.textContent = deviceOnline ? (isOn ? "LED allumée" : "LED éteinte") : "Appareil hors ligne";
-  }
+function render(){
+  const Vf=solveVf(),Ion=(P.vcc-Vf)/P.R,d=twin.duty/100,Im=Ion*d,lock=mode==="sync"&&!online;
+  $("led").style.setProperty("--g",d);
+  $("sw").classList.toggle("on",twin.duty>0);
+  $("sw").disabled=$("duty").disabled=$("freq").disabled=lock;
+  $("duty").value=twin.duty;$("freq").value=twin.freq;
+  $("dv").textContent=twin.duty+" %";$("fv").textContent=twin.freq+" Hz";
+  $("etat").textContent=lock?"Appareil hors ligne":(twin.duty>0?"LED allumée":"LED éteinte");
+  $("modeBtn").textContent=mode==="sync"?"Déconnecter du physique (simulation)":"Reconnecter au physique";
+  $("modeLbl").textContent=mode==="sync"?"Mode synchronisé : le jumeau suit l’appareil":"Mode simulation : le physique n’est plus touché";
+  $("phys").textContent="Physique actuel : "+dev.duty+" % à "+dev.freq+" Hz";
+  $("mes").disabled=!online;
+  $("out").innerHTML=`Tension LED Vf ≈ ${Vf.toFixed(2)} V · courant à l’état haut ${(Ion*1000).toFixed(2)} mA · courant moyen ${(Im*1000).toFixed(2)} mA · puissance LED ${(Vf*Im*1000).toFixed(2)} mW`;
+  const m=simulate(twin.duty,twin.freq);
+  plot($("cw"),[{d:Array.from(m.slice(0,160)),col:"#60a5fa"},{d:meas&&Array.from(meas.slice(0,160)),col:"#fb923c"}],P.vcc,"0 → 40 ms");
+  plot($("cs"),[{d:Array.from(spectrum(m).slice(1,256)),col:"#60a5fa"},{d:meas&&Array.from(spectrum(meas).slice(1,256)),col:"#fb923c"}],Vf,"0 → 2000 Hz");
+  if(meas)$("res").innerHTML=analyse();
+}
 
-  const client = mqtt.connect(BROKER, { reconnectPeriod: 2000 });
+/* ---------- MQTT ---------- */
+const cl=mqtt.connect(BROKER,{reconnectPeriod:2000});
+cl.on("connect",()=>{$("dB").classList.add("ok");cl.subscribe([T.etat,T.on,T.cap]);});
+cl.on("close",()=>$("dB").classList.remove("ok"));
+cl.on("message",(t,m)=>{const s=m.toString();
+  if(t===T.etat){const[a,b]=s.split(",").map(Number);if(!isNaN(a)&&!isNaN(b)){dev={duty:a,freq:b};if(a>0)last=a;if(mode==="sync")twin={duty:a,freq:b};}}
+  else if(t===T.on){online=s==="1";$("dD").classList.toggle("ok",online);}
+  else if(t===T.cap){try{meas=Float64Array.from(JSON.parse(s).v,x=>x/1000);}catch(e){$("res").textContent="Mesure illisible";}}
+  render();});
 
-  client.on("connect", () => {
-    dotBroker.classList.add("ok");
-    client.subscribe([T_ETAT, T_ONLINE]);
-  });
-  client.on("close", () => { dotBroker.classList.remove("ok"); });
-
-  client.on("message", (topic, msg) => {
-    const v = msg.toString() === "1";
-    if (topic === T_ETAT) isOn = v;
-    if (topic === T_ONLINE) { deviceOnline = v; dotDevice.classList.toggle("ok", v); }
-    render();
-  });
-
-  // Le clic envoie une commande ; l’affichage ne change qu’une fois l’état réel confirmé par l’appareil.
-  sw.addEventListener("click", () => {
-    client.publish(T_CMD, isOn ? "0" : "1");
-  });
-
-  render();
+/* ---------- Actions ---------- */
+function apply(d,f,send){twin={duty:d,freq:f};if(d>0)last=d;if(send&&mode==="sync")cl.publish(T.cmd,d+","+f);render();}
+$("sw").onclick=()=>apply(twin.duty>0?0:(last||100),twin.freq,true);
+$("duty").oninput=()=>apply(+$("duty").value,twin.freq,false);
+$("freq").oninput=()=>apply(twin.duty,+$("freq").value,false);
+$("duty").onchange=$("freq").onchange=()=>apply(twin.duty,twin.freq,true);
+$("modeBtn").onclick=()=>{if(mode==="sync")mode="sim";else{mode="sync";cl.publish(T.cmd,twin.duty+","+twin.freq);}render();};
+$("vcc").onchange=()=>{P.vcc=+$("vcc").value;render();};
+$("R").onchange=()=>{P.R=+$("R").value;render();};
+$("mes").onclick=()=>{$("res").textContent="Acquisition en cours…";cl.publish(T.req,"1");};
+$("cal").onclick=()=>{if(!meas)return;const mx=Math.max(...meas);
+  if(mx<0.3){$("res").textContent="Pas de signal : allume la LED, mesure, et vérifie le fil sur GPIO 34.";return;}
+  const Vf=avg(meas.filter(v=>v>mx*0.5)),I=(P.vcc-Vf)/P.R;P.Is=I/(Math.exp(Vf/(P.n*P.Vt))-1);render();};
+render();
 </script>
 </body>
 </html>
